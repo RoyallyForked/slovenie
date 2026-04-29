@@ -1,0 +1,342 @@
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Slovénie: Itinéraire Premium Lacs & Montagnes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; color: #1E293B; }
+        .chart-container { position: relative; width: 100%; max-width: 500px; height: 280px; margin: auto; }
+        #map-main { height: 450px; width: 100%; border-radius: 1rem; z-index: 1; border: 1px solid #E2E8F0; }
+        .hike-map { height: 250px; width: 100%; border-radius: 0.75rem; z-index: 1; border: 1px solid #E2E8F0; margin-top: 1rem; background: #f1f5f9; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .day-btn.active { background-color: #ECFDF5; border-left: 4px solid #10B981; color: #065F46; }
+        .timeline-item { position: relative; padding-left: 2.5rem; border-left: 2px solid #E2E8F0; padding-bottom: 2rem; }
+        .timeline-item::before { content: ''; position: absolute; left: -9px; top: 0; width: 16px; height: 16px; border-radius: 50%; background-color: #10B981; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .type-badge { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 9999px; text-transform: uppercase; }
+        .bg-bike { background-color: #DBEAFE; color: #1E40AF; }
+        .bg-hike { background-color: #FEF3C7; color: #92400E; }
+        .bg-culture { background-color: #F3E8FF; color: #6B21A8; }
+        .hike-img-container { width: 100%; height: 200px; border-radius: 0.75rem; margin-bottom: 1rem; overflow: hidden; border: 1px solid #E2E8F0; background-color: #F1F5F9; }
+        .hike-img-container img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease; }
+        .hike-img-container img:hover { transform: scale(1.05); }
+    </style>
+</head>
+<body class="antialiased">
+
+    <nav class="sticky top-0 z-[1000] bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl">🇸🇮</span>
+                    <span class="font-bold text-xl text-teal-800 tracking-tight">Slovénie Expérience</span>
+                </div>
+                <div class="hidden md:flex space-x-1">
+                    <button onclick="openTab('overview')" class="nav-btn px-4 py-2 rounded-lg font-medium text-slate-500 hover:bg-slate-50 transition" data-target="overview">Aperçu</button>
+                    <button onclick="openTab('itinerary')" class="nav-btn px-4 py-2 rounded-lg font-medium text-slate-500 hover:bg-slate-50 transition" data-target="itinerary">Programme</button>
+                    <button onclick="openTab('hiking')" class="nav-btn px-4 py-2 rounded-lg font-medium text-slate-500 hover:bg-slate-50 transition" data-target="hiking">Guide Randos</button>
+                    <button onclick="openTab('budget')" class="nav-btn px-4 py-2 rounded-lg font-medium text-slate-500 hover:bg-slate-50 transition" data-target="budget">Budget</button>
+                    <button onclick="openTab('logistics')" class="nav-btn px-4 py-2 rounded-lg font-medium text-slate-500 hover:bg-slate-50 transition" data-target="logistics">Logistique</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <header class="bg-gradient-to-br from-slate-900 via-teal-900 to-emerald-900 text-white py-12 px-4 text-center">
+        <h1 class="text-3xl md:text-5xl font-extrabold mb-4 text-white">Aventure Slovène : 5 Jours de Pleine Nature</h1>
+        <p class="text-emerald-100 text-lg mb-6 max-w-2xl mx-auto italic">5 Randonnées (incluant Slap Savica), 7 Sorties Vélo et immersion alpine.</p>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+        <section id="overview" class="tab-content active">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 space-y-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 class="text-xl font-bold mb-4 flex items-center gap-2"><span>🗺️</span> Carte du Périple</h3>
+                        <div id="map-main"></div>
+                    </div>
+                </div>
+                <div class="space-y-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center">
+                        <h3 class="text-lg font-bold mb-4">Statistiques Consolidées</h3>
+                        <div class="chart-container">
+                            <canvas id="activityChart"></canvas>
+                        </div>
+                        <div class="mt-6 space-y-3 text-left">
+                            <div class="p-4 bg-teal-50 rounded-xl border border-teal-100 shadow-sm">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-lg">🚲</span>
+                                    <span class="font-bold text-teal-800 text-sm">Sorties Vélo</span>
+                                </div>
+                                <p class="text-xs text-teal-600">7 sessions • <strong>~155 km total</strong></p>
+                            </div>
+                            <div class="p-4 bg-amber-50 rounded-xl border border-amber-100 shadow-sm">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-lg">🥾</span>
+                                    <span class="font-bold text-amber-800 text-sm">Randonnées</span>
+                                </div>
+                                <p class="text-xs text-amber-600">5 sessions (3 longues)</p>
+                                <p class="text-xs text-amber-700 mt-1">Distance cumulée : <strong>~34.5 km</strong></p>
+                                <p class="text-xs text-amber-700">Dénivelé total : <strong>+1 370 m</strong></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="itinerary" class="tab-content">
+            <div class="flex flex-col lg:flex-row gap-8">
+                <div class="lg:w-1/4 flex flex-col gap-2" id="days-nav"></div>
+                <div class="lg:w-3/4 bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-10" id="day-detail"></div>
+            </div>
+        </section>
+
+        <section id="hiking" class="tab-content">
+            <div class="mb-10 text-center max-w-3xl mx-auto">
+                <h2 class="text-3xl font-bold text-slate-900 mb-4">Dossier Technique Randonnée</h2>
+                <p class="text-slate-600">Données topographiques réelles incluant désormais la cascade de Savica.</p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8" id="hikes-container"></div>
+        </section>
+
+        <section id="budget" class="tab-content">
+            <div class="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+                <h2 class="text-2xl font-bold mb-6 border-b pb-4 text-center">Budget Hébergement (700€)</h2>
+                <div class="space-y-6 text-center">
+                    <p class="font-bold">Urban Ring (1 n) + Sava Hotel Park (3 n)</p>
+                    <p class="text-4xl font-black text-teal-600">620 €</p>
+                    <p class="text-teal-600 font-bold">✅ Budget respecté</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="logistics" class="tab-content">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 class="font-bold text-lg mb-4 text-teal-800">🚗 Voiture Aéroport</h3>
+                    <p class="text-sm">Prise et remise à l'aéroport de Ljubljana (Avantcar).</p>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <h3 class="font-bold text-lg mb-4 text-blue-800">🚆 Rail/Bike Bohinj</h3>
+                    <p class="text-sm">Trajet stratégique Gare Bled Jezero → Bohinjska Bistrica.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        const formatText = (text) => text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+        const itinerary = [
+            {
+                id: 1, date: "4 Mai", title: "Arrivée & Marais de Ljubljana", location: [46.0569, 14.5058],
+                events: [
+                    { time: "12:35", text: "🛬 Atterrissage à Ljubljana. Récupération bagages.", type: "logistics" },
+                    { time: "13:30", text: "🚗 Récupération voiture chez **Avantcar**. Transfert vers le sud.", type: "logistics" },
+                    { time: "14:15", text: "🏨 Check-in **Hotel Urban Ring**. Installation rapide.", type: "logistics" },
+                    { time: "15h30 - 17h30", text: "🚲 **Sortie Vélo #1 (20 km)** : Boucle dans les Marais de Ljubljana. Terrain plat, église St Michel de Plečnik.", type: "bike" },
+                    { time: "17h30 - 19h30", text: "🚶 Balade Urbaine : Pont Triple, Place Prešeren et quais de la Ljubljanica.", type: "culture" },
+                    { time: "20:00", text: "🍽️ Dîner historique chez **Gostilna Sokol** au centre-ville.", type: "culture" }
+                ]
+            },
+            {
+                id: 2, date: "5 Mai", title: "Bled : Sommets & Villages Cachés", location: [46.3683, 14.1141],
+                events: [
+                    { time: "08:30 - 09:30", text: "🚗 Transfert vers Bled et dépôt bagages au **Sava Hotel Park**.", type: "logistics" },
+                    { time: "10:30 - 13:00", text: "🥾 **Hike #1 (Longue)** : Mala Osojnica & Ojstrica. La vue mythique sur le lac (Sentier escarpé).", type: "hike" },
+                    { time: "13:00 - 14:30", text: "🥘 Déjeuner au restaurant **Old Cellar Bled** ou **Murka**.", type: "culture" },
+                    { time: "14:30 - 16:30", text: "🏰 Visite du Château de Bled (Musée) et traversée du lac en barque **Pletna** depuis le point Mlino.", type: "culture" },
+                    { time: "17:00 - 19:00", text: "🚲 **Sortie Vélo #2 (22 km)** : Boucle des villages (Selo - Ribno - Bodešče - Koritno - Bled).", type: "bike" },
+                    { time: "19:30", text: "🍰 Dessert : La véritable **Kremna Rezina** au Café Park face au lac.", type: "culture" }
+                ]
+            },
+            {
+                id: 3, date: "6 Mai", title: "Radovna : L'Odyssée Verte", location: [46.4022, 13.9782],
+                events: [
+                    { time: "09:00 - 12:00", text: "🚲 **Sortie Vélo #3 (35 km A/R)** : Vallée sauvage de la Radovna. Arrêt au **Lac Kreda** (eaux turquoise).", type: "bike" },
+                    { time: "12:00 - 13:30", text: "🥘 Déjeuner rustique à la **Ferme Psnak** (Gostilna Psnak).", type: "culture" },
+                    { time: "13:30 - 16:30", text: "🥾 **Hike #2 (Longue)** : Boucle Gorges de Vintgar → Église Ste Catherine. Vue panoramique unique.", type: "hike" },
+                    { time: "16:45 - 18:30", text: "🚲 **Sortie Vélo #4 (15 km)** : Retour tranquille vers Bled via les vergers de Zasip.", type: "bike" },
+                    { time: "20:00", text: "🍽️ Dîner gastronomique au **Garden Village Bled** (concept éco-responsable).", type: "culture" }
+                ]
+            },
+            {
+                id: 4, date: "7 Mai", title: "Bohinj : Le Royaume du Triglav", location: [46.2897, 13.8883],
+                events: [
+                    { time: "08:30 - 09:30", text: "🚆 Gare de **Bled Jezero** : Train panoramique avec vélos vers Bohinjska Bistrica.", type: "logistics" },
+                    { time: "10:30 - 14:00", text: "🥾 **Hike #3 (Longue)** : Gorges de la Mostnica et Vallée de Voje. Canyon sculpté et cascade finale.", type: "hike" },
+                    { time: "14:15 - 15:30", text: "🚲 **Vélo & Cascade** : Rejoignez Ukanc à vélo, puis montez à pied voir la **Cascade de Savica** (Slap Savica). 500 marches pour une vue spectaculaire.", type: "hike" },
+                    { time: "15:45 - 17:00", text: "🚲 **Sortie Vélo #6 (18 km)** : Tour partiel du lac de Bohinj et retour gare.", type: "bike" },
+                    { time: "17:30", text: "🚆 Retour à Bled en train.", type: "logistics" }
+                ]
+            },
+            {
+                id: 5, date: "8 Mai", title: "Patrimoine & Vol Retour", location: [46.3444, 14.1751],
+                events: [
+                    { time: "09:00 - 11:30", text: "🥾 **Hike #4 (Intermédiaire)** : Ascension vers **Talež Lookout** pour un dernier panorama.", type: "hike" },
+                    { time: "11:45 - 14:00", text: "🚲 **Sortie Vélo #7 (20 km)** : Campagne de Radovljica vers le **Château de Kamen**.", type: "bike" },
+                    { time: "14:00 - 15:30", text: "🏰 Déjeuner à Radovljica (centre médiéval) et Musée de l'Apiculture.", type: "culture" },
+                    { time: "16:30", text: "🚗 Aéroport LJU : Remise de la voiture et décollage (18h30).", type: "logistics" }
+                ]
+            }
+        ];
+
+        const hikeDetails = [
+            {
+                name: "Mala Osojnica & Ojstrica", start: "Camping Bled (Velika Zaka)",
+                length: "4.2 km", duration: "2h30", elevation: "+310 m", difficulty: "Modérée",
+                desc: "LA vue mythique sur le lac de Bled.", coords: [46.3614, 14.0827], 
+                path: [[46.3614, 14.0827], [46.3600, 14.0805], [46.3585, 14.0820], [46.3602, 14.0850], [46.3614, 14.0827]],
+                color: "#10B981", img: "https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?q=80&w=800&auto=format&fit=crop",
+                link: "https://www.bled.si/en/what-to-see-do/attractions/15/ojstrica-and-mala-osojnica/"
+            },
+            {
+                name: "Vintgar & Sveta Katarina", start: "Parking Vintgar (Podhom)",
+                length: "6.5 km", duration: "3h00", elevation: "+220 m", difficulty: "Facile",
+                desc: "Canyon sur passerelles et retour par les vergers.", coords: [46.3920, 14.0838],
+                path: [[46.3920, 14.0838], [46.3945, 14.0860], [46.3920, 14.0950], [46.3860, 14.1030], [46.3820, 14.0920], [46.3920, 14.0838]],
+                color: "#F59E0B", img: "https://images.unsplash.com/photo-1627914878430-c3bc7f98d752?q=80&w=800&auto=format&fit=crop",
+                link: "https://vintgar.si/"
+            },
+            {
+                name: "Gorges Mostnica & Vallée de Voje", start: "Stara Fužina (Bohinj)",
+                length: "12.5 km", duration: "4h00", elevation: "+380 m", difficulty: "Modérée",
+                desc: "Long canyon et immense vallée alpine.", coords: [46.2905, 13.8884],
+                path: [[46.2905, 13.8884], [46.2980, 13.8920], [46.3080, 13.8950], [46.3150, 13.8980], [46.3220, 13.9020]],
+                color: "#3B82F6", img: "https://images.unsplash.com/photo-1552423019-24da6e3194a2?q=80&w=800&auto=format&fit=crop",
+                link: "https://www.bohinj.si/en/attractions/mostnica-gorge-and-voje-valley/"
+            },
+            {
+                name: "Cascade de Savica (Slap Savica)", start: "Ukanc (Far end of Lake)",
+                length: "4.3 km", duration: "1h15", elevation: "+130 m", difficulty: "Facile/Sportif",
+                desc: "Double chute d'eau surgissant de la roche. 500 marches à grimper.", coords: [46.2897, 13.8023],
+                path: [[46.2897, 13.8023], [46.2905, 13.7950], [46.2890, 13.7920]],
+                color: "#EF4444", img: "https://images.unsplash.com/photo-1563823450585-79774659b85c?q=80&w=800&auto=format&fit=crop",
+                link: "https://www.bohinj.si/en/attractions/savica-waterfall/"
+            },
+            {
+                name: "Belvédère de Talež", start: "Pont de Ribno (Bled)",
+                length: "7.0 km", duration: "2h30", elevation: "+330 m", difficulty: "Intermédiaire",
+                desc: "Vue à 180° sur la chaîne des Alpes Juliennes.", coords: [46.3478, 14.1197],
+                path: [[46.3478, 14.1197], [46.3440, 14.1220], [46.3410, 14.1200], [46.3380, 14.1240], [46.3478, 14.1197]],
+                color: "#8B5CF6", img: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=800&auto=format&fit=crop",
+                link: "https://www.outdooractive.com/en/route/hiking-route/slovenia/bled-ribno-planina-talez/37841198/"
+            }
+        ];
+
+        let currentDay = 1;
+        let mainMap = null;
+        let hikeMaps = {};
+        const tileLayerURL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+        const tileAttribution = '© CartoDB Voyager';
+
+        function openTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            if (tabId === 'overview') {
+                if(!mainMap) initMainMap();
+                setTimeout(() => mainMap.invalidateSize(), 200);
+            }
+            if (tabId === 'itinerary') initItinerary();
+            if (tabId === 'hiking') initHikes();
+        }
+
+        function initMainMap() {
+            mainMap = L.map('map-main').setView([46.2, 14.2], 10);
+            L.tileLayer(tileLayerURL, { attribution: tileAttribution }).addTo(mainMap);
+            itinerary.forEach(d => {
+                L.marker(d.location).addTo(mainMap).bindPopup(`<strong>Jour ${d.id}</strong>: ${d.title}`);
+            });
+        }
+
+        function initItinerary() {
+            const nav = document.getElementById('days-nav');
+            nav.innerHTML = '';
+            itinerary.forEach(day => {
+                const btn = document.createElement('button');
+                btn.className = `day-btn w-full text-left p-4 rounded-xl font-bold transition-all border border-slate-100 ${day.id === currentDay ? 'active shadow-md' : 'bg-white hover:bg-slate-50'}`;
+                btn.innerHTML = `<span class="text-xs uppercase text-slate-400 block tracking-widest">Jour ${day.id}</span>${day.date}`;
+                btn.onclick = () => { currentDay = day.id; initItinerary(); };
+                nav.appendChild(btn);
+            });
+
+            const detail = document.getElementById('day-detail');
+            const data = itinerary.find(d => d.id === currentDay);
+            detail.innerHTML = `
+                <div class="mb-8">
+                    <h2 class="text-3xl font-extrabold text-slate-900">${data.title}</h2>
+                </div>
+                <div class="space-y-0">
+                    ${data.events.map(ev => `
+                        <div class="timeline-item">
+                            <span class="text-xs font-black text-teal-600 uppercase tracking-tighter">${ev.time}</span>
+                            <div class="mt-1">
+                                <span class="type-badge ${ev.type === 'bike' ? 'bg-bike' : ev.type === 'hike' ? 'bg-hike' : 'bg-culture'}">${ev.type}</span>
+                                <p class="text-base text-slate-700 mt-2 font-medium">${formatText(ev.text)}</p>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function initHikes() {
+            const container = document.getElementById('hikes-container');
+            if (container.innerHTML !== '') {
+                Object.values(hikeMaps).forEach(m => m.invalidateSize());
+                return;
+            }
+            hikeDetails.forEach((h, i) => {
+                const card = document.createElement('div');
+                card.className = "bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col";
+                card.innerHTML = `
+                    <h3 class="font-bold text-xl text-slate-900 mb-2">${h.name}</h3>
+                    <div class="hike-img-container"><img src="${h.img}" alt="${h.name}"></div>
+                    <div class="grid grid-cols-2 gap-4 text-xs mb-4">
+                        <div class="p-2 bg-slate-50 rounded-lg"><p class="text-slate-400">Distance</p><p class="font-bold">${h.length}</p></div>
+                        <div class="p-2 bg-slate-50 rounded-lg"><p class="text-slate-400">Dénivelé</p><p class="font-bold">${h.elevation}</p></div>
+                    </div>
+                    <a href="${h.link}" target="_blank" class="mb-4 text-center py-2 bg-teal-600 text-white rounded-lg font-bold text-sm hover:bg-teal-700">En savoir plus</a>
+                    <div id="hike-map-${i}" class="hike-map"></div>
+                `;
+                container.appendChild(card);
+                setTimeout(() => {
+                    const hMap = L.map(`hike-map-${i}`, { zoomControl: false }).setView(h.coords, 14);
+                    L.tileLayer(tileLayerURL, { attribution: tileAttribution }).addTo(hMap);
+                    L.polyline(h.path, { color: h.color, weight: 5, opacity: 0.8 }).addTo(hMap);
+                    L.circleMarker(h.coords, { radius: 6, color: 'white', fillColor: h.color, fillOpacity: 1 }).addTo(hMap);
+                    hMap.invalidateSize();
+                    hikeMaps[i] = hMap;
+                }, 100);
+            });
+        }
+
+        function initChart() {
+            new Chart(document.getElementById('activityChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Vélo (7 sorties)', 'Randonnée (5 sessions)', 'Culture/Trajets'],
+                    datasets: [{
+                        data: [7, 5, 3],
+                        backgroundColor: ['#10B981', '#F59E0B', '#6366F1'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'bottom' } } }
+            });
+        }
+
+        window.onload = () => { initItinerary(); initChart(); initMainMap(); };
+    </script>
+</body>
+</html>
